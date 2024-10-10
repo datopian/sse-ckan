@@ -38,7 +38,7 @@ dominate==2.7.0
     # via -r requirements.in
 feedgen==0.9.0
     # via -r requirements.in
-flask==2.2.5
+flask==2.0.3
     # via
     #   -r requirements.in
     #   flask-babel
@@ -159,13 +159,13 @@ tzlocal==4.2
     # via -r requirements.in
 urllib3==1.26.19
     # via requests
-watchdog==2.3
+watchdog==2.1.6
     # via werkzeug
 webassets==2.0
     # via -r requirements.in
 webencodings==0.5.1
     # via bleach
-werkzeug[watchdog]==3.0.3
+werkzeug[watchdog]==2.0.3
     # via
     #   -r requirements.in
     #   flask
