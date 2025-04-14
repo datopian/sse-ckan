@@ -1,5 +1,0 @@
-tracking:
-  filters: rjsmin
-  output: tracking/%(version)s_tracking.js
-  contents:
-    - tracking.js

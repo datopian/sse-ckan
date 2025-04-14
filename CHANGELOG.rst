@@ -9,6 +9,76 @@ Changelog
 
 .. towncrier release notes start
 
+v.2.10.7 2025-02-05
+===================
+
+Migration notes
+---------------
+
+* Going forward, if both ``ckan.upload.[type].mimetypes`` and
+  ``ckan.upload.[type].types`` are empty, no uploads will be allowed
+  for this object type (e.g. ``user`` or ``group``). It previoulsy
+  meant that all file types were allowed. To keep the old behaviour use
+  the string ``*`` as value in both options (this is dangerous and
+  **not** recommended).
+
+Minor changes
+-------------
+- Adapt login failure message if reCAPTCHA is enabled (`#8627
+  <https://github.com/ckan/ckan/pull/8627>`_)
+- Update release process docs (`#8586
+  <https://github.com/ckan/ckan/pull/8586>`_)
+- Support 2.11 version of the Solr schema in CKAN 2.10 (``5acfeda6e``)
+
+  
+Bugfixes
+--------
+- `CVE-2025-24372 <https://github.com/ckan/ckan/security/advisories/GHSA-7pq5-qcp6-mcww>`_: Fix potential
+  XSS vector through user and group/organization images.
+- Invalidate cached pages and load fresh ones if cookies change (`#6955
+  <https://github.com/ckan/ckan/pull/6955>`_)
+- Fix `check_access` order for resource create view (`#8588
+  <https://github.com/ckan/ckan/pull/8588>`_)
+- Fix auth check for datastore data dictionary view (`#8639
+  <https://github.com/ckan/ckan/pull/8639>`_)
+
+
+
+v.2.10.6 2024-12-11
+===================
+
+Minor changes
+-------------
+
+- `datastore_info` action method now has `side_effect_free`, allowing it to be
+  available via GET requests in the API. (`#8457
+  <https://github.com/ckan/ckan/pull/8457>`_)
+- Add id attribute to AnonymousUser
+  (`#8571 <https://github.com/ckan/ckan/pull/8571>`_)
+- Automate publishing CKAN package to PyPI (`#8520
+  <https://github.com/ckan/ckan/pull/8520>`_)
+- Automate creation of GitHub release (`#8570
+  <https://github.com/ckan/ckan/pull/8570>`_)
+
+
+Bugfixes
+--------
+
+- Fixed context in `set_datastore_active_flag` to
+  solve possible solr errors during `index_package` (`#7571
+  <https://github.com/ckan/ckan/pull/7571>`_)
+- POST request to GET-only endpoint causes 500 error (`#7616
+  <https://github.com/ckan/ckan/pull/7616>`_)
+- Set license model `od_conformance` and `osd_conformance` attributes' default
+  values to `False` to prevent errors. (`#8268
+  <https://github.com/ckan/ckan/pull/8268>`_)
+- Load the right i18n files for Chinese locales in DataTables View. (`#8432
+  <https://github.com/ckan/ckan/pull/8432>`_)
+- Fixed server error on robots.txt when bootstrap 3 templates were used.
+  (`#8536 <https://github.com/ckan/ckan/pull/8536>`_)
+- Include ``public`` folder in MANIFEST.in
+  (`#8565 <https://github.com/ckan/ckan/pull/8565>`_)
+
 v.2.10.5 2024-08-21
 ===================
 
