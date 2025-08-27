@@ -38,7 +38,7 @@ dominate==2.7.0
     # via -r requirements.in
 feedgen==0.9.0
     # via -r requirements.in
-flask==2.0.3
+flask==2.2.5
     # via
     #   -r requirements.in
     #   flask-babel
@@ -69,7 +69,7 @@ itsdangerous==2.1.1
     # via
     #   flask
     #   flask-wtf
-jinja2==3.1.5
+jinja2==3.1.6
     # via
     #   -r requirements.in
     #   flask
@@ -157,7 +157,7 @@ tzdata==2022.1
     # via pytz-deprecation-shim
 tzlocal==4.2
     # via -r requirements.in
-urllib3==1.26.19
+urllib3==2.5.0
     # via requests
 watchdog==2.1.6
     # via werkzeug
@@ -165,7 +165,7 @@ webassets==2.0
     # via -r requirements.in
 webencodings==0.5.1
     # via bleach
-werkzeug[watchdog]==2.0.3
+werkzeug==3.0.6
     # via
     #   -r requirements.in
     #   flask
