@@ -65,7 +65,7 @@ def dump(resource_id: str):
     try:
         get_action('datastore_search')({}, {'resource_id': resource_id,
                                             'limit': 0})
-    except ObjectNotFound:
+    except (ObjectNotFound, NotAuthorized):
         abort(404, _('DataStore resource not found'))
 
     data, errors = dict_fns.validate(request.args.to_dict(), dump_schema())
@@ -141,7 +141,10 @@ class DictionaryView(MethodView):
         try:
             check_access(
                 "datastore_create",
-                context={"user": current_user.name, "auth_user_obj": current_user},
+                context={
+                    "user": current_user.name,
+                    "auth_user_obj": current_user  # type: ignore
+                },
                 data_dict={"resource_id": resource_id},
             )
 

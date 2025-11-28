@@ -37,7 +37,6 @@ import ckan.model as model
 from ckan.lib import base
 from ckan.lib import helpers as h
 from ckan.lib import jinja_extensions
-from ckan.lib import uploader
 from ckan.lib import i18n
 from ckan.common import config, g, request, ungettext
 from ckan.config.middleware.common_middleware import (TrackingMiddleware,
@@ -122,6 +121,9 @@ class BeakerSessionInterface(SessionInterface):
         if 'beaker.session' in request.environ:
             return request.environ['beaker.session']
 
+    def regenerate(self, session: Any):
+        session.invalidate()
+
     def save_session(self, app: Any, session: Any, response: Any):
         session.save()
 
@@ -139,7 +141,7 @@ def make_flask_stack(conf: Union[Config, CKANConfig]) -> CKANApp:
 
     # Register storage for accessing group images, site logo, etc.
     storage_folder = []
-    storage = uploader.get_storage_path()
+    storage = config.get('ckan.storage_path')
     if storage:
         storage_folder = [os.path.join(storage, 'storage')]
 
@@ -266,6 +268,8 @@ def make_flask_stack(conf: Union[Config, CKANConfig]) -> CKANApp:
     if not app.config.get(wtf_key):
         config[wtf_key] = app.config[wtf_key] = app.config["SECRET_KEY"]
     app.config["WTF_CSRF_FIELD_NAME"] = config.get('WTF_CSRF_FIELD_NAME')
+    app.config["WTF_CSRF_ENABLED"] = config.get("WTF_CSRF_ENABLED")
+    app.config["WTF_CSRF_TIME_LIMIT"] = config.get("WTF_CSRF_TIME_LIMIT")
     csrf.init_app(app)
 
     # Set up each IBlueprint extension as a Flask Blueprint

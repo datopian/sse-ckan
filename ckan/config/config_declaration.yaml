@@ -23,7 +23,7 @@ groups:
         ignored: true
         type: bool
 
-  # Options that are available inside CircleCI containers:
+  # Options that are available inside the Docker / CI containers:
   - annotation: ~
     options:
       - key: CKAN_POSTGRES_USER
@@ -372,7 +372,7 @@ groups:
 
           To get the list of all the available properties check the `SQLAlchemy documentation`_
 
-          .. _SQLAlchemy documentation: http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html#engine-creation-api
+          .. _SQLAlchemy documentation: https://docs.sqlalchemy.org/en/20/core/engines.html#engine-creation-api
 
   - annotation: Site Settings
     options:
@@ -428,12 +428,6 @@ groups:
           ``file_contents`` will guess the mimetype by the file itself, this tends to be inaccurate.
 
           ``None`` will not store the mimetype for the resource.
-
-      - key: ckan.static_max_age
-        default: 3600
-        type: int
-        example: 2592000
-        description: Controls CKAN static files' cache max age, if we're serving and caching them.
 
       - key: ckan.tracking_enabled
         type: bool
@@ -702,7 +696,7 @@ groups:
 
       - key: WTF_CSRF_TIME_LIMIT
         type: int
-        default: 3600
+        default: 31536000
         description: |
           Max age in seconds for CSRF tokens.
           This value is capped by the lifetime of the session.
@@ -1368,10 +1362,21 @@ groups:
 
   - annotation: Storage Settings
     options:
+      - key: ckan.uploads_enabled
+        validators: ignore_missing boolean_validator
+        example: false
+        description: |
+          Defines file uploads are enabled or not.
+
+          If enabled also set :ref:`ckan.storage_path` if you want to use internal storage.
+
       - key: ckan.storage_path
         placeholder: /var/lib/ckan/default
         example: /var/lib/ckan/default
-        description: This defines the location of where CKAN will store all uploaded data.
+        description: |
+          This defines the location of where CKAN will store all uploaded data.
+
+          If set to some directory, also set :ref:`ckan.uploads_enabled` to true to enable uploads in the UI.
 
       - key: ckan.max_resource_size
         type: int
