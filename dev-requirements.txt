@@ -30,3 +30,4 @@ coverage==7.7.1
 #used for nice pytest reports
 junitparser==3.2.0
 junit2html==31.0.2
+urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
