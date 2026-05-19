@@ -1,0 +1,19 @@
+diff --git a/ckan/logic/validators.py b/ckan/logic/validators.py
+index 635ef9dee..5597eebe7 100644
+--- a/ckan/logic/validators.py
++++ b/ckan/logic/validators.py
+@@ -514,11 +514,10 @@ def tag_length_validator(value: Any, context: Context) -> Any:
+ def tag_name_validator(value: Any, context: Context) -> Any:
+     """Ensures that tag does not contain wrong characters
+     """
+-    tagname_match = re.compile(r'[\w \-.]*$', re.UNICODE)
++    # Allow most characters except control characters and line breaks
++    tagname_match = re.compile(r'^[^\x00-\x1f\x7f]*$', re.UNICODE)
+     if not tagname_match.match(value):
+-        raise Invalid(_('Tag "%s" can only contain alphanumeric '
+-                        'characters, spaces (" "), hyphens ("-"), '
+-                        'underscores ("_") or dots (".")') % (value))
++        raise Invalid(_('Tag "%s" cannot contain control characters') % (value))
+     return value
+ 
+ def tag_not_uppercase(value: Any, context: Context) -> Any:

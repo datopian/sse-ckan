@@ -1,0 +1,142 @@
+FROM ckan/ckan-dev:2.11.0@sha256:92be932b2144f0f342728abe08f44a5a8a98a86b120dff3221c6dfb9e512dc9e
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
+    libpcre3 \
+    build-essential \
+    libffi-dev \
+    libxml2-dev \
+    procps \
+    libxslt1-dev \
+    libssl-dev \
+    vim \
+    curl \
+    autoconf \
+    automake \
+    libtool \
+    gcc \
+    libc-dev \
+    libpcre3-dev \
+    nodejs \
+    npm && \
+    rm -rf /var/lib/apt/lists/*
+
+# datapusher_plus requirements
+RUN apt update && apt install -y gnupg wget ca-certificates && \
+    wget -O - https://dathere.github.io/qsv-deb-releases/qsv-deb.gpg | \
+    gpg --dearmor -o /etc/apt/trusted.gpg.d/qsv-deb.gpg && \
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/qsv-deb.gpg] https://dathere.github.io/qsv-deb-releases ./" > /etc/apt/sources.list.d/qsv.list && \
+    apt update && \
+    apt install -y qsv && \
+    apt install -y uchardet && \
+    apt install -y libxslt1-dev && \
+    apt install -y libxml2-dev && \
+    apt install -y zlib1g-dev && \
+    apt install -y libffi-dev && \
+    apt install -y libpq-dev && \
+    apt install -y git && \
+    apt install -y build-essential && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# ckanext-spatial
+RUN apt-get update && apt-get install -y --no-install-recommends libffi-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV GEOS_VERSION=3.6.1
+RUN git -c http.sslVerify=false clone -b ${GEOS_VERSION} --depth=1 --single-branch https://git.osgeo.org/gitea/geos/geos.git ${SRC_DIR}/geos && \
+    cd ${SRC_DIR}/geos && \
+    ./autogen.sh && \
+    ./configure --prefix /usr && \
+    make -j2 && \
+    make install-strip && \
+    rm -rf ${SRC_DIR}/geos
+
+RUN pip3 install --upgrade pip==20.2.1
+
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.6/supercronic-linux-amd64 \
+    SUPERCRONIC=supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=c3b78d342e5413ad39092fd3cfc083a85f5e2b75
+
+RUN curl -fsSLO "$SUPERCRONIC_URL" \
+ && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
+ && chmod +x "$SUPERCRONIC" \
+ && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
+ && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+
+RUN pip install supervisor
+
+RUN python3.10 -m ensurepip --upgrade && \
+    pip3 install -e git+https://github.com/ckan/ckanext-googleanalytics.git@v2.5.1#egg=ckanext-googleanalytics && \
+    pip3 install -r https://raw.githubusercontent.com/ckan/ckanext-googleanalytics/v2.5.1/requirements.txt && \
+    pip3 install -e git+https://github.com/ckan/ckanext-spatial.git@v2.3.0#egg=ckanext-spatial && \
+    pip3 install -r https://raw.githubusercontent.com/ckan/ckanext-spatial/v2.3.0/requirements.txt
+
+RUN pip3 install -r https://raw.githubusercontent.com/shubham-mahajan/ckanext-s3filestore/feature/r2support-ckan-2.11/requirements.txt && \
+    pip3 install -e git+https://github.com/shubham-mahajan/ckanext-s3filestore.git@feature/r2support-ckan-2.11#egg=ckanext-s3filestore
+
+RUN pip3 install -e git+https://github.com/Gutts-n/datapusher-plus.git@5c61265b20afb198ae204259f4425158c0a49a33#egg=datapusher-plus && \
+    pip3 install -r https://raw.githubusercontent.com/Gutts-n/datapusher-plus/5c61265b20afb198ae204259f4425158c0a49a33/requirements.txt
+
+# Sentry
+RUN pip3 install --no-cache-dir git+https://github.com/datopian/ckanext-sentry.git@2.10#egg=ckanext-sentry
+
+# Scheming
+RUN pip3 install -e git+https://github.com/ckan/ckanext-scheming.git@release-3.1.0#egg=ckanext-scheming && \
+    # PDF & Geojson Views
+    pip3 install -e git+https://github.com/ckan/ckanext-pdfview.git#egg=ckanext-pdfview && \
+    pip3 install -e git+https://github.com/datopian/ckanext-geoview.git@Nationalgrid#egg=ckanext-geoview
+
+# Install gRPC RPC Service dependencies
+RUN pip3 install grpcio==1.68.0 grpcio-tools==1.68.0 protobuf==5.27.2
+
+COPY licenses.json /ext/licenses.json
+
+COPY setup/prerun.py ${APP_DIR}/prerun.py
+RUN chmod +x ${APP_DIR}/prerun.py
+
+RUN chown -R ckan ${APP_DIR}
+
+## Install the 'patch' command
+RUN apt-get update && apt-get install -y patch && rm -rf /var/lib/apt/lists/*
+
+COPY patches/ckan/* ${APP_DIR}/patches/ckan/
+
+RUN for d in $APP_DIR/patches/*; do \
+        for f in `ls $d/*.patch | sort -g`; do \
+            cd $SRC_DIR/`basename "$d"` && echo "$0: Applying patch $f to $SRC_DIR/`basename $d`"; cd ${APP_DIR}/src && git apply --ignore-space-change --ignore-whitespace "$f" ; \
+        done ; \
+    done
+
+ENV CKAN__PLUGINS envvars image_view datatables_view text_view datastore scheming_datasets datapusher_plus yodauthentication yodresourcemeta theme s3filestore activity stats spatial_metadata resource_proxy geo_view geojson_view
+
+ENV CKAN__VIEWS__DEFAULT_VIEWS text_view image_view geo_view geojson_view datatables_view
+
+RUN pip3 install paste PasteDeploy
+
+# Load envvars plugin on ini file
+RUN ckan config-tool ${APP_DIR}/ckan.ini "ckan.plugins = ${CKAN__PLUGINS}"
+RUN ckan config-tool ${APP_DIR}/ckan.ini "ckan.views.default_views = ${CKAN__VIEWS__DEFAULT_VIEWS}"
+RUN ckan config-tool ${APP_DIR}/ckan.ini "who.timeout = ${WHO__TIMEOUT}"
+
+ENV TZ UTC
+
+COPY setup/supervisor.worker.conf /etc/supervisord.d/worker.conf
+COPY setup/supervisord.conf /etc/supervisord.conf
+
+COPY setup/start_ckan.sh ${APP_DIR}
+COPY setup/start_rpc.sh ${APP_DIR}
+RUN chmod +x ${APP_DIR}/start_ckan.sh ${APP_DIR}/start_rpc.sh
+
+# Compile gRPC Protocol Buffer files
+RUN mkdir -p ${SRC_DIR}/ckan/ckan/rpc/proto && \
+    cd ${SRC_DIR}/ckan && \
+    python3 -m grpc_tools.protoc \
+    -I./ckan/rpc/proto \
+    --python_out=./ckan/rpc/proto \
+    --grpc_python_out=./ckan/rpc/proto \
+    ./ckan/rpc/proto/ckan_rpc.proto 2>/dev/null || echo "Proto files will be compiled at runtime"
+
+RUN chown -R ckan ${APP_DIR}

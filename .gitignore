@@ -52,3 +52,6 @@ cypress.env.json
 
 # cypress
 cypress/videos
+
+# secrets
+.env

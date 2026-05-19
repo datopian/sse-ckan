@@ -1,0 +1,296 @@
+syntax = "proto3";
+
+package ckan.rpc;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/ckan/ckan/pkg/rpc";
+option java_multiple_files = true;
+option java_package = "org.ckan.rpc";
+option java_outer_classname = "CkanRpcProto";
+option py_generic_services = true;
+
+// Common message types
+message ActionRequest {
+  // The name of the action to call (e.g., "package_create", "package_list")
+  string action = 1;
+
+  // Context information
+  ActionContext context = 2;
+
+  // Action parameters as a JSON object
+  google.protobuf.Struct data = 3;
+}
+
+message ActionResponse {
+  // Whether the action succeeded
+  bool success = 1;
+
+  // Result data if successful
+  google.protobuf.Struct result = 2;
+
+  // Error details if failed
+  ActionError error = 3;
+
+  // Help URL for the action
+  string help = 4;
+
+  // List of changed entities (type, id)
+  repeated ChangedEntity changed_entities = 5;
+}
+
+message ActionContext {
+  // Username of the requesting user
+  string user = 1;
+
+  // API version
+  int32 api_version = 2;
+
+  // Additional context parameters
+  map<string, string> extras = 3;
+}
+
+message ActionError {
+  // Error type (class name)
+  string type = 1;
+
+  // Error message
+  string message = 2;
+
+  // Validation errors for specific fields
+  map<string, repeated string> field_errors = 3;
+}
+
+message ChangedEntity {
+  // Type of changed entity (e.g., "package", "resource")
+  string entity_type = 1;
+
+  // ID of the changed entity
+  string entity_id = 2;
+
+  // Operation type (create, update, delete)
+  string operation = 3;
+}
+
+// Batch operations
+message BatchActionRequest {
+  // Multiple action requests to execute
+  repeated ActionRequest requests = 1;
+
+  // Stop on first error
+  bool stop_on_error = 2;
+}
+
+message BatchActionResponse {
+  // Responses for each request in the same order
+  repeated ActionResponse responses = 1;
+
+  // Overall status
+  bool all_succeeded = 2;
+
+  // Number of failed actions
+  int32 failed_count = 3;
+}
+
+// Action discovery/introspection
+message ActionInfo {
+  // Name of the action
+  string name = 1;
+
+  // Action description
+  string description = 2;
+
+  // Whether the action is side-effect-free (can use GET)
+  bool side_effect_free = 3;
+
+  // Input schema
+  string schema = 4;
+
+  // Required parameters
+  repeated string required = 5;
+
+  // Optional parameters
+  repeated string optional = 6;
+
+  // Return type description
+  string return_type = 7;
+
+  // Examples
+  repeated string examples = 8;
+}
+
+message ActionListRequest {
+  // Filter by category (e.g., "get", "create", "update")
+  string category = 1;
+
+  // Search term
+  string search = 2;
+}
+
+message ActionListResponse {
+  // List of available actions
+  repeated ActionInfo actions = 1;
+
+  // Total count
+  int32 total = 2;
+}
+
+// Dataset/Package related messages
+message Package {
+  string id = 1;
+  string name = 2;
+  string title = 3;
+  string notes = 4;
+  string state = 5;
+  google.protobuf.Struct extras = 6;
+  repeated Resource resources = 7;
+  repeated Group groups = 8;
+  google.protobuf.Struct tags = 9;
+  google.protobuf.Timestamp created = 10;
+  google.protobuf.Timestamp last_modified = 11;
+  repeated User author = 12;
+  User maintainer = 13;
+}
+
+message Resource {
+  string id = 1;
+  string package_id = 2;
+  string url = 3;
+  string format = 4;
+  string description = 5;
+  string name = 6;
+  string hash = 7;
+  int64 size = 8;
+  google.protobuf.Struct extras = 9;
+  google.protobuf.Timestamp created = 10;
+  google.protobuf.Timestamp last_modified = 11;
+}
+
+// User related messages
+message User {
+  string id = 1;
+  string name = 2;
+  string fullname = 3;
+  string email = 4;
+  string about = 5;
+  google.protobuf.Struct extras = 6;
+  google.protobuf.Timestamp created = 7;
+  int32 activity_stream_last_viewed = 8;
+  bool sysadmin = 9;
+  string state = 10;
+}
+
+// Group/Organization related messages
+message Group {
+  string id = 1;
+  string name = 2;
+  string title = 3;
+  string description = 4;
+  string image_display_url = 5;
+  string type = 6;
+  bool is_organization = 7;
+  google.protobuf.Struct extras = 8;
+  google.protobuf.Timestamp created = 9;
+  int32 package_count = 10;
+  repeated User users = 11;
+}
+
+// Search related messages
+message SearchQuery {
+  string q = 1;
+  int32 rows = 2;
+  int32 start = 3;
+  repeated string fq = 4;
+  string sort = 5;
+  bool facet = 6;
+  map<string, bool> facet_options = 7;
+}
+
+message SearchResult {
+  int32 count = 1;
+  repeated Package results = 2;
+  map<string, google.protobuf.Struct> facets = 3;
+}
+
+// Tag related messages
+message Tag {
+  string id = 1;
+  string name = 2;
+  int32 vocabulary_id = 3;
+  int32 packages = 4;
+}
+
+// The main CKAN RPC service
+service CkanActionService {
+  // Execute a single RPC action
+  rpc ExecuteAction(ActionRequest) returns (ActionResponse);
+
+  // Execute multiple RPC actions in batch (atomicity not guaranteed)
+  rpc ExecuteBatch(BatchActionRequest) returns (BatchActionResponse);
+
+  // Get information about available actions
+  rpc ListActions(ActionListRequest) returns (ActionListResponse);
+
+  // Get detailed information about a specific action
+  rpc GetAction(GetActionRequest) returns (ActionInfo);
+
+  // Stream multiple action results
+  rpc ExecuteStream(stream ActionRequest) returns (stream ActionResponse);
+}
+
+message GetActionRequest {
+  string action_name = 1;
+}
+
+// Additional service for real-time data streaming
+service CkanStreamService {
+  // Stream package changes
+  rpc StreamPackages(PackageStreamRequest) returns (stream Package);
+
+  // Stream resource changes
+  rpc StreamResources(ResourceStreamRequest) returns (stream Resource);
+
+  // Stream activity/changes
+  rpc StreamActivity(ActivityStreamRequest) returns (stream ActivityEntry);
+}
+
+message PackageStreamRequest {
+  // Filter by last_modified date
+  google.protobuf.Timestamp since = 1;
+
+  // Filter by organization
+  string organization_id = 2;
+
+  // Only changed packages
+  bool only_changed = 3;
+}
+
+message ResourceStreamRequest {
+  // Filter by package_id
+  string package_id = 1;
+
+  // Filter by last_modified date
+  google.protobuf.Timestamp since = 2;
+}
+
+message ActivityStreamRequest {
+  // Filter by user
+  string user_id = 1;
+
+  // Filter by object type
+  string object_type = 2;
+
+  // Filter by timestamp
+  google.protobuf.Timestamp since = 3;
+}
+
+message ActivityEntry {
+  string id = 1;
+  string timestamp = 2;
+  string user_id = 3;
+  string object_id = 4;
+  string object_type = 5;
+  string activity_type = 6;
+  google.protobuf.Struct data = 7;
+}
