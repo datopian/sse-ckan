@@ -96,7 +96,6 @@ CONFIG_FROM_ENV_VARS: dict[str, str] = {
     'ckan.datapusher.url': 'CKAN_DATAPUSHER_URL',
     'smtp.server': 'CKAN_SMTP_SERVER',
     'smtp.starttls': 'CKAN_SMTP_STARTTLS',
-    'smtp.starttls_verify': 'CKAN_SMTP_STARTTLS_VERIFY',
     'smtp.user': 'CKAN_SMTP_USER',
     'smtp.password': 'CKAN_SMTP_PASSWORD',
     'smtp.mail_from': 'CKAN_SMTP_MAIL_FROM',
