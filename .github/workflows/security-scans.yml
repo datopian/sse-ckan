@@ -1,8 +1,14 @@
 name: Security scans
 
-# Opengrep (static analysis of the CKAN code) and Trivy (pinned Python
-# dependencies) over the branch the SSE image is built from, uploaded to
-# DefectDojo, where the SSE issue sync turns findings into board issues.
+# Opengrep (static analysis of the CKAN code) over the branch the SSE image is
+# built from, uploaded to DefectDojo, where the SSE issue sync turns findings
+# into board issues.
+#
+# No Trivy dependency scan on purpose: requirements.txt here is only the
+# starting point. The image build overrides pins (constraints, upgrades), so a
+# scan of this file reports packages that are already fixed in the shipped
+# image. The image scans in dx-helm-sse-dev and dx-helm-sse-prod report what
+# actually ships.
 #
 # Why this file lives on main but scans another branch: scheduled and manual
 # runs only work from the default branch (main), while the deployed code is on
@@ -36,8 +42,6 @@ concurrency:
 
 env:
   SCAN_REF: ckan-2.10.11
-  # Pinned: an unpinned scanner image can change results (or break) between runs.
-  TRIVY_IMAGE: aquasec/trivy:0.76.2
 
 jobs:
   opengrep:
@@ -89,50 +93,3 @@ jobs:
             -F "close_old_findings=true" \
             -F "service=sast" \
             -F "file=@$RUNNER_TEMP/sast-semgrep.json"
-
-  trivy:
-    # Python packages CKAN pins in requirements.txt. Separate job so one
-    # scanner failing never hides the result of the other.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SCAN_REF }}
-
-      - name: Trivy dependency scan
-        run: |
-          # dev-requirements.txt, doc/ and package-lock.json are test, docs and
-          # asset-build tooling that never ships in the image.
-          docker run --rm -v "$PWD:/src" -v "$RUNNER_TEMP:/out" "$TRIVY_IMAGE" \
-            fs --scanners vuln --severity LOW,MEDIUM,HIGH,CRITICAL \
-            --skip-files /src/dev-requirements.txt --skip-files /src/package-lock.json --skip-dirs /src/doc \
-            --format json --output /out/trivy.json --exit-code 0 /src
-          {
-            echo "**Trivy dependency scan**"
-            echo
-            jq -r '[.Results[]?.Vulnerabilities[]?] as $v
-              | def n($s): [$v[] | select(.Severity == $s)] | length;
-                "\($v | length) vulnerabilities in declared dependencies (critical \(n("CRITICAL")), high \(n("HIGH")), medium \(n("MEDIUM")), low \(n("LOW")))"' "$RUNNER_TEMP/trivy.json"
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload to DefectDojo
-        if: github.event_name != 'pull_request'
-        env:
-          DEFECTDOJO_TOKEN: ${{ secrets.DEFECTDOJO_TOKEN }}
-          DEFECTDOJO_URL: ${{ vars.DEFECTDOJO_URL }}
-          DD_PRODUCT_TYPE: ${{ vars.DD_PRODUCT_TYPE }}
-        run: |
-          for v in DEFECTDOJO_TOKEN DEFECTDOJO_URL DD_PRODUCT_TYPE; do
-            [ -n "${!v}" ] || { echo "::error::$v is not set"; exit 1; }
-          done
-          curl -sS -L --fail-with-body -X POST "$DEFECTDOJO_URL/api/v2/reimport-scan/" \
-            -H "Authorization: Token $DEFECTDOJO_TOKEN" \
-            -F "scan_type=Trivy Scan" \
-            -F "test_title=Trivy dependencies" \
-            -F "product_name=${GITHUB_REPOSITORY#*/}" \
-            -F "product_type_name=$DD_PRODUCT_TYPE" \
-            -F "engagement_name=CI/CD Scans" \
-            -F "auto_create_context=true" \
-            -F "close_old_findings=true" \
-            -F "service=deps" \
-            -F "file=@$RUNNER_TEMP/trivy.json"
